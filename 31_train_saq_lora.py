@@ -1,4 +1,3 @@
-# scripts/31_train_saq_lora.py
 import argparse
 from pathlib import Path
 import pandas as pd
@@ -82,7 +81,7 @@ def main():
     ap.add_argument("--eval_steps", type=int, default=100)
     ap.add_argument("--save_steps", type=int, default=100)
 
-    # NEW: explicit split files (recommended)
+
     ap.add_argument("--train_csv", type=str, default=None,
                     help="SAQ train split CSV (relative to --data_dir unless absolute).")
     ap.add_argument("--val_csv", type=str, default=None,

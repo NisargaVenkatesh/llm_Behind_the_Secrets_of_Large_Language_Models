@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# scripts/51_predict_mcq_logits_lora.py
-
 import argparse
 from pathlib import Path
 import re
@@ -85,8 +82,7 @@ def main():
 
     df = pd.read_csv(data_dir / args.split)
 
-    # expected: MCQID (or ID), prompt, choices, country
-    # your scorer expects MCQID column. If file uses ID, we map it.
+
     if "MCQID" not in df.columns:
         if "ID" in df.columns:
             df["MCQID"] = df["ID"]

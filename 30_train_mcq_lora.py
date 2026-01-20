@@ -1,4 +1,3 @@
-# scripts/30_train_mcq_lora.py
 import argparse
 from pathlib import Path
 import pandas as pd
@@ -57,7 +56,6 @@ def truncate_to_max_tokens(tok: AutoTokenizer, s: str, max_len: int) -> str:
     return tok.decode(ids, skip_special_tokens=True)
 
 def _precision_flags():
-    # On H100 you want bf16. On older GPUs, fp16 is the fallback.
     if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
         return True, False
     if torch.cuda.is_available():
@@ -76,7 +74,6 @@ def _resolve_csv(data_dir: Path, maybe_name: str | None, default_name: str) -> P
     p = Path(maybe_name)
     if p.is_absolute():
         return p
-    # allow user to pass "data/foo.csv" too
     if p.exists():
         return p
     return data_dir / maybe_name
@@ -97,7 +94,6 @@ def main():
     ap.add_argument("--eval_steps", type=int, default=100)
     ap.add_argument("--save_steps", type=int, default=100)
 
-    # NEW: explicit split files (recommended)
     ap.add_argument("--train_csv", type=str, default=None,
                     help="MCQ train split CSV (relative to --data_dir unless absolute).")
     ap.add_argument("--val_csv", type=str, default=None,
@@ -122,9 +118,7 @@ def main():
     ckpt_dir = out_dir / "mcq_lora_ckpts"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    # Choose data source:
-    # - If train_csv & val_csv given -> use them (no leakage, reproducible)
-    # - Else -> fallback to train_dataset_mcq.csv with an internal 90/10 split
+ 
     if (args.train_csv is None) ^ (args.val_csv is None):
         raise SystemExit("[ERROR] Provide BOTH --train_csv and --val_csv, or provide neither.")
 
@@ -141,12 +135,10 @@ def main():
         print("[INFO] Using internal random split: 90/10 from train_dataset_mcq.csv")
 
     tok = AutoTokenizer.from_pretrained(args.model_id, use_fast=True)
-    # For training, right padding is okay. (Generation scripts should set padding_side='left'.)
     tok.padding_side = "right"
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
-    # Build dataset with ONLY "text" column (TRL stays in "language modeling" mode).
     train_items = []
     for _, r in train_df.iterrows():
         choices = parse_choices(r["choices"])
@@ -208,7 +200,7 @@ def main():
         report_to=[],
         seed=args.seed,
         remove_unused_columns=False,
-        dataloader_num_workers=0,   # IMPORTANT on HPC (prevents common hangs)
+        dataloader_num_workers=0,   
     )
 
     trainer = SFTTrainer(
@@ -217,7 +209,7 @@ def main():
         train_dataset=train_ds,
         eval_dataset=val_ds,
         peft_config=lora,
-        processing_class=tok,  # TRL 0.26.2 uses this instead of tokenizer=
+        processing_class=tok, 
     )
 
     trainer.train()

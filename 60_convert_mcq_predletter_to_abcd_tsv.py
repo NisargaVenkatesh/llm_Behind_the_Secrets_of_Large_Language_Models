@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 from pathlib import Path
 import pandas as pd
@@ -41,7 +40,7 @@ def main():
 
     invalid = (df["pred_letter"] == "").sum()
     if invalid > 0:
-        # If you prefer hard failure, replace with raise ValueError(...)
+       
         print(f"[WARN] {invalid} rows had invalid pred_letter; setting them to 'A' as fallback.")
         df.loc[df["pred_letter"] == "", "pred_letter"] = "A"
 
@@ -49,7 +48,6 @@ def main():
     for L in ["A", "B", "C", "D"]:
         out[L] = (df["pred_letter"] == L)
 
-    # Sanity: exactly one True per row
     bad = (out[["A","B","C","D"]].sum(axis=1) != 1).sum()
     if bad != 0:
         raise ValueError(f"Output has {bad} rows without exactly one True (this should never happen).")

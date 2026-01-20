@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# scripts/50_predict_saq_selfrank.py
-
 import argparse
 from pathlib import Path
 import math
@@ -19,7 +16,6 @@ except Exception:
 
 def build_prompt(en_question: str, country: str | None = None) -> str:
     country_line = f"Country context: {country}\n" if country else ""
-    # Keep it short + strict so generation stays short.
     return (
         "Answer the question with a short phrase in English. Do not explain.\n"
         + country_line
@@ -33,11 +29,9 @@ def build_prompt(en_question: str, country: str | None = None) -> str:
 def score_completion_logprob(model, tok, prompt: str, completion: str, device: torch.device) -> float:
     """
     Compute log P(completion | prompt) by summing token logprobs of completion tokens.
-    Think: “How surprised is the model by this completion, given the prompt?”
-    Higher is better (less surprised).
     """
     prompt_ids = tok(prompt, return_tensors="pt", add_special_tokens=True).input_ids.to(device)
-    # IMPORTANT: completion should include a leading space so tokenization matches how LLMs usually write.
+
     comp_text = " " + completion.strip()
     comp_ids = tok(comp_text, return_tensors="pt", add_special_tokens=False).input_ids.to(device)
 
@@ -45,17 +39,16 @@ def score_completion_logprob(model, tok, prompt: str, completion: str, device: t
     attn = torch.ones_like(input_ids)
 
     out = model(input_ids=input_ids, attention_mask=attn)
-    logits = out.logits  # [1, seq, vocab]
+    logits = out.logits  
 
-    # We want logprobs of completion tokens only.
-    # Token i is predicted by logits at position i-1.
+ 
     start = prompt_ids.shape[1]
-    # positions in logits that predict completion tokens:
-    pred_positions = torch.arange(start - 1, start - 1 + comp_ids.shape[1], device=device)
-    target_tokens = comp_ids.squeeze(0)  # [comp_len]
 
-    logprobs = torch.log_softmax(logits[0, pred_positions, :], dim=-1)  # [comp_len, vocab]
-    token_logprobs = logprobs.gather(1, target_tokens.unsqueeze(1)).squeeze(1)  # [comp_len]
+    pred_positions = torch.arange(start - 1, start - 1 + comp_ids.shape[1], device=device)
+    target_tokens = comp_ids.squeeze(0)
+
+    logprobs = torch.log_softmax(logits[0, pred_positions, :], dim=-1)  
+    token_logprobs = logprobs.gather(1, target_tokens.unsqueeze(1)).squeeze(1)  
     return float(token_logprobs.sum().item())
 
 
@@ -68,7 +61,7 @@ def generate_candidates(model, tok, prompt: str, device: torch.device, n: int, m
     """
     inputs = tok(prompt, return_tensors="pt", padding=True, truncation=True).to(device)
 
-    # Decoder-only models should use LEFT padding for generation correctness.
+    
     tok.padding_side = "left"
 
     out = model.generate(
@@ -82,13 +75,12 @@ def generate_candidates(model, tok, prompt: str, device: torch.device, n: int, m
         pad_token_id=tok.pad_token_id,
     )
 
-    # Extract only the generated continuation (after the prompt)
+
     prompt_len = inputs["input_ids"].shape[1]
     cands = []
     for seq in out:
         gen_ids = seq[prompt_len:]
         txt = tok.decode(gen_ids, skip_special_tokens=True).strip()
-        # keep only first line / first sentence-ish to prevent explanations
         txt = txt.split("\n")[0].strip()
         if txt:
             cands.append(txt)
@@ -128,7 +120,6 @@ def main():
     out_path = out_dir / "saq_prediction.tsv"
 
     df = pd.read_csv(data_dir / args.split)
-    # expected columns: ID, en_question, country (question also possible)
     if "en_question" not in df.columns and "question" in df.columns:
         df["en_question"] = df["question"]
 
@@ -161,7 +152,7 @@ def main():
         cid = str(r.get("country", "")).strip() if pd.notna(r.get("country", "")) else ""
         prompt = build_prompt(q, country=cid if cid else None)
 
-        # 1) generate candidates (model-only)
+       
         raw_cands = generate_candidates(
             model, tok, prompt, device=device,
             n=args.num_samples,
@@ -170,12 +161,12 @@ def main():
             top_p=args.top_p,
         )
 
-        # 2) normalize like scorer and dedup
+       
         norm_cands = [normalize_text(x) for x in raw_cands]
-        norm_cands = [x for x in norm_cands if x]  # remove empty after normalization
+        norm_cands = [x for x in norm_cands if x]  
         norm_cands = dedup_keep_order(norm_cands)
 
-        # If the model produced nothing usable, fallback to greedy one-shot.
+       
         if not norm_cands:
             raw = generate_candidates(
                 model, tok, prompt, device=device,
@@ -185,10 +176,10 @@ def main():
             fallback = normalize_text(raw[0] if raw else "")
             norm_cands = [fallback] if fallback else [""]
 
-        # keep top-K for reranking
+       
         cand_pool = norm_cands[: args.max_candidates]
 
-        # 3) rerank by log P(candidate | prompt)
+        
         best = cand_pool[0]
         best_lp = -math.inf
         for c in cand_pool:

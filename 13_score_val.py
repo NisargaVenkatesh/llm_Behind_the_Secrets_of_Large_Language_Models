@@ -117,7 +117,7 @@ def score_saq(val_df: pd.DataFrame, pred_path: Path):
             preds = preds.sort_values(by="answer", ascending=False).drop_duplicates(subset=[key], keep="first")
 
         # If val has duplicate IDs, evaluation is ambiguous.
-        # We'll score row-by-row anyway (each row keeps its own acceptable set),
+        # We score row-by-row (each row keeps its own acceptable set),
         # but the same prediction will be reused for all rows with same ID.
         merged = val_df.merge(preds[[key, "answer"]], on=key, how="left")
         merged["pred_norm"] = merged["answer"].fillna("").apply(normalize_text)

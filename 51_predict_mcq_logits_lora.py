@@ -82,7 +82,7 @@ def main():
 
     df = pd.read_csv(data_dir / args.split)
 
-
+    # expected: MCQID (or ID), prompt, choices, country
     if "MCQID" not in df.columns:
         if "ID" in df.columns:
             df["MCQID"] = df["ID"]

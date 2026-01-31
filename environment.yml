@@ -1,0 +1,39 @@
+name: llmcourse
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - setuptools
+  - wheel
+  - pytorch=2.3.*
+  - pytorch-cuda=12.1
+  - torchvision
+  - torchaudio
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - joblib
+  - tqdm
+  - regex
+
+  # --- Hugging Face ecosystem / training ---
+  - transformers=4.43.*
+  - datasets=2.20.*
+  - tokenizers=0.19.*
+  - accelerate=0.33.*
+  - sentencepiece
+  - protobuf
+  - safetensors
+  - huggingface_hub
+
+  - pyyaml
+  - requests
+  - rich
+  - pip:
+      - peft==0.12.0
+      - trl==0.9.6
+      - bitsandbytes==0.43.1
